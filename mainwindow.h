@@ -4,6 +4,12 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QVariant>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
+#include <QFileDialog>
+#include <QMessageBox>
 
 class QTableWidget;
 class QTabWidget;
@@ -28,6 +34,9 @@ private:
 
 private:
     void setupUi();
+private slots:
+    void onRefreshClicked();
+    void onExportJsonClicked();
 
 public:
     void fillOs();

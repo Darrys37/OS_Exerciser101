@@ -8,6 +8,13 @@
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QToolBar>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
+#include <QFileDialog>
+#include <QMessageBox>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -38,7 +45,11 @@ void MainWindow::setupUi()
     setWindowTitle("Lab 1.01 – System Information (Qt + WinAPI)");
     auto *tb = addToolBar("Main");
     auto *actRefresh = tb->addAction("Refresh");
+    connect(actRefresh, &QAction::triggered, this, &MainWindow::onRefreshClicked);
+
     auto *actExport = tb->addAction("Export JSON");
+    connect(actExport, &QAction::triggered, this, &MainWindow::onExportJsonClicked);
+
     tabs_ = new QTabWidget(this);
     setCentralWidget(tabs_);
     tblOs_ = new QTableWidget(this);
@@ -124,4 +135,53 @@ void MainWindow::fillPower()
     add("AC Line Status", p.acLineStatus);
     add("Battery Flag", p.batteryFlag);
     add("Battery Life (%)", p.batteryPercent >= 0 ? QString::number(p.batteryPercent) : "Unknown");
+}
+void MainWindow::onRefreshClicked()
+{
+    qDebug() << "Refresh clicked!";
+    fillOs();
+    fillCpuRam();
+    fillStorage();
+    fillPower();
+}
+QJsonArray tableToJson(QTableWidget *table)
+{
+    QJsonArray array;
+    int rows = table->rowCount();
+    int cols = table->columnCount();
+
+    for (int r = 0; r < rows; ++r) {
+        QJsonObject rowObj;
+        for (int c = 0; c < cols; ++c) {
+            QString header = table->horizontalHeaderItem(c)->text();
+            QString value = table->item(r, c) ? table->item(r, c)->text() : "";
+            rowObj[header] = value;
+        }
+        array.append(rowObj);
+    }
+    return array;
+}
+void MainWindow::onExportJsonClicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, "Save JSON", "", "JSON Files (*.json)");
+    if (fileName.isEmpty()) return;
+
+    QJsonObject root;
+    root["OS"] = tableToJson(tblOs_);
+    root["CPU_RAM"] = tableToJson(tblCpuRam_);
+    root["Storage"] = tableToJson(tblStorage_);
+    root["Power"] = tableToJson(tblPower_);
+
+    QJsonDocument doc(root);
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Error", "Could not open file for writing");
+        return;
+    }
+
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+
+    QMessageBox::information(this, "Success", "Data exported to " + fileName);
 }
